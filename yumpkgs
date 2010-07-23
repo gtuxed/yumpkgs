@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-#INPORTS
+#IMPORTS
 
 import os, sys, sqlite3, getopt, urllib2, re, bz2
 
@@ -62,7 +62,7 @@ Below we gather the dependencies for bash and gcc.
 
 $ ''' + PROG_NAME + ' -q -p bash,gcc'
 
-    sys.exit(0)
+    sys.exit()
 
 
 #Walk the tree
@@ -182,7 +182,7 @@ for o, val in opts:
 if opt['install']:
     makeUnique()
     installPkgs()
-    sys.exit(0)
+    sys.exit()
 
 if not opt['pkgs']:
     print 'Please specify at least one package name.'

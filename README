@@ -1,6 +1,22 @@
+THE PURPOSE
+
+Some time ago I wasn't with internet access at home, 
+I had to go to a cybercafe everyday and noticied that 
+one thing was missing, a tool that could help me download
+distribution packages from Windows (yes, every cybercafe, 
+just Windows...).
+
+This senario is not about just me, there is a lot of people that if start
+playing with FOSS software in Brazil they will have problem to update their
+systems, because most of them still doesn't have internet access at home.They 
+usually go to a cybercafe, school, university and still just find 
+Windows stations.
+
+I had to do something.
+
 * FIRST, RETREIVING THE LIST OF PACKAGES
 
-First in you in your linux distro run:
+First in you in your Linux distro run:
 
 ./yumpkgs -d -p package1,package2,packageN
 
@@ -10,6 +26,15 @@ Now that you probably need to use Windows to get
 access to the internet, no problem, just execute de
 file named "download.bat" and everything will be fine.
 
-* SOURCES
+* SOURCES AND DEPENDENCIES
 
-This little script uses the wget from http://gnuwin32.sourceforge.net/.
+- Wget: this little script uses the wget from http://gnuwin32.sourceforge.net.
+- Python: this tools requires the python language interpreter, you can find it
+at http://www.python.org
+
+For advanced users I recomend the usage of the cygwin because it integrates everything and
+makes the environment more Unix-like.
+
+* FOR NEWS
+
+I might not update this README everytime, for that purpose I'll use my blog at http://gtuxed.blogspot.com
