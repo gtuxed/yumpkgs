@@ -18,7 +18,7 @@ con = None
 #Browser
 ua = { 'User-agent' : 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US) AppleWebKit/532.5 (KHTML, like Gecko) Chrome/3.0.195.38 Safari/532.5' }
 
-#List that holds the file names to down
+#List that holds the file names to download
 PKGLIST_PATH = PROG_DIR + '/downloads.list'
 PKGLIST = 0
 
@@ -26,13 +26,14 @@ PKGLIST = 0
 opt = {'arch' : 'i386', 
        'baseurl' : '', 
        'down' : 0,
+       'downdir' : '',
        'install' : 0,
        'justdown' : 0, 
-       'downdir' : '',
        'metadata' : '',
        'pkgs' : [], 
        'quiet' : 0,
-       'release' : '13'
+       'rel' : '13',
+       'search' : '',
        }
 
 #FUNCTIONS
@@ -201,10 +202,10 @@ if not opt['pkgs'] and not opt['search']:
     sys.exit(1)
 
 if not opt['baseurl']:
-    if not opt['arch'] or not opt['release']:
+    if not opt['arch'] or not opt['rel']:
 	print "Please specify the an architecture and and release."
         sys.exit(1)
-    opt['baseurl'] = 'http://down.fedora.redhat.com/pub/fedora/linux/releases/' + opt['release'] + '/Everything/' + opt['arch'] + '/os'
+    opt['baseurl'] = 'http://down.fedora.redhat.com/pub/fedora/linux/releases/' + opt['rel'] + '/Everything/' + opt['arch'] + '/os'
 
 if not opt['metadata']: 
     opt['metadata'] = PROG_DIR + '/primary-' + opt['arch'] + '.sqlite'
