@@ -1,0 +1,252 @@
+#!/usr/bin/python
+
+#INPORTS
+
+import os, sys, sqlite3, getopt, urllib2, re, bz2
+
+#GLOBAL VARIABLES
+
+#General information
+PROG_DIR = '.'
+PROG_NAME = os.path.basename(sys.path[0])
+
+#Metadata
+nodes = {}
+cur = None
+con = None
+
+#Browser
+ua = { 'User-agent' : 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US) AppleWebKit/532.5 (KHTML, like Gecko) Chrome/3.0.195.38 Safari/532.5' }
+
+#List that holds the file names to download
+PKGLIST_PATH = PROG_DIR + '/downloads.list'
+PKGLIST = 0
+
+#Command line options
+opt = {'arch' : 'i386', 
+       'baseurl' : '', 
+       'download' : 0,
+       'install' : 0,
+       'justdownload' : 0, 
+       'metadata' : '',
+       'pkgs' : [], 
+       'quiet' : 0,
+       'release' : '13'
+       }
+
+#FUNCTIONS
+
+#Help message
+def helpmsg():
+    print PROG_NAME + ''' options -p pkgname,pkgname...
+
+OPTIONS
+
+-q change to the quiet mode
+-m specify the metadata
+-b specify the baseurl
+-D specify the program directory
+-d download the metadata and the packages if needed
+-r specify the release(from 1 to current)
+-a specify the arch(i386, x86_64, etc.)
+-i install the packages
+-h display help message (this message)
+
+PKGNAME
+
+* Name of one package, the others should be separated by comma.
+
+EXAMPLES
+
+Below we gather the dependencies for bash and gcc.
+
+$ ''' + PROG_NAME + ' -q -p bash,gcc'
+
+    sys.exit(0)
+
+
+#Walk the tree
+def walkTree(pkg):
+
+    #Variables
+    global PKGLIST, nodes
+    names = []
+    deps = []
+
+    #Retreive a list dependencies
+    cur.execute("select requires.name from packages,requires where packages.pkgKey = requires.pkgKey and packages.name = '" + pkg + "'")
+    deps = cur.fetchall()
+    if not opt['quiet']:
+        print '* Deps - files: ',
+        for row in deps:
+            print row[0],
+        print ''
+
+    #List wich pkg names solve the given dependencies
+    if not opt['quiet']: 
+        print '* Deps - package names: ',
+    for row in deps:
+        cur.execute("select provides.pkgKey from provides where provides.name = '" + row[0] + "'")
+        pkgKey = cur.fetchone()
+        if pkgKey:
+            cur.execute("select packages.name from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
+            names.append(cur.fetchall())
+            cur.execute("select packages.location_href from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
+            for row in cur.fetchall():
+                PKGLIST.write(opt['baseurl'] + '/' + row[0] + '\n')
+    tmplist = []
+    for e in names: 
+        if e not in tmplist: 
+            tmplist.append(e) 
+    names = tmplist
+
+    if not opt['quiet']:
+        for name in names:
+            print name[0][0],
+
+    #While its a "node" we need to walk
+    for name in names:
+	if not nodes.get(name[0][0],0):
+	    if not opt['quiet']:
+                print '\n\n* Walking: ' + name[0][0]
+	    #nodes[name[0][0]] = 1
+	    nodes[name[0][0]] = 1
+	    walkTree(name[0][0])
+
+#Download the packages
+def download():
+    global PROG_DIR
+    print '* Downloading packages'
+    for line in open(PKGLIST_PATH):
+        print line
+        open(PROG_DIR + '/downloads/' + os.path.basename(line)).write(urllib2.urlopen(line).read())
+
+#Make the entries unique
+def makeUnique():
+
+    #Variables
+    global PKGLIST_PATH
+    if os.path.isfile(PKGLIST_PATH + '.tmp'):
+        os.unlink(PKGLIST_PATH + '.tmp')
+    TMPLIST = open(PKGLIST_PATH + '.tmp','w')
+    tmplist = []
+
+    for pkg in open(PKGLIST_PATH):
+	if pkg not in tmplist:
+	    tmplist.append(pkg)
+    tmplist.reverse()
+    for item in tmplist:
+	TMPLIST.write(item)
+    os.rename(PKGLIST_PATH + '.tmp',PKGLIST_PATH)
+
+#List the pacakges to be installed in order to be installed
+def installPkgs():
+
+    #Variables
+    global PKGLIST_PATH, PROG_DIR
+
+    for pkg in open(PKGLIST_PATH):
+	pkgfile = PROG_DIR + '/downloads/' + os.path.basename(pkg)
+	if os.path.isfile(pkgfile):
+	    print 'rpm -i ' + pkgfile,
+	else:
+	    print 'Missing: ' + pkgfile,
+
+#START
+
+#Handle the command line arguments
+opts, args = getopt.getopt(sys.argv[1:],'hb:dD:ijm:p:q')   
+for o, val in opts:
+    if o == '-h':
+        helpmsg()
+    elif o == '-b': 
+        opt['baseuri'] = val
+    elif o == '-d': 
+        opt['download'] = 1
+    elif o == '-D': 
+        PROG_DIR = val
+    elif o == '-i': 
+        opt['install'] = 1
+    elif o == '-j': 
+        opt['justdownload'] = 1
+    elif o == '-m': 
+        opt['metadata'] = val
+    elif o == '-p': 
+        opt['pkgs'] = val.split(',')
+    elif o == '-q': 
+        opt['quiet'] = 1
+    else:
+        print 'Unknown option: ' + o
+        helpmsg()
+
+if opt['install']:
+    makeUnique()
+    installPkgs()
+    sys.exit(0)
+
+if not opt['pkgs']:
+    print 'Please specify at least one package name.'
+    print 'Ex.: ' + PROG_NAME + ' -p glibc'
+    sys.exit(1)
+
+if not opt['baseurl']:
+    if not opt['arch'] or not opt['release']:
+	print "Please specify the an architecture and and release."
+        sys.exit(1)
+    opt['baseurl'] = 'http://download.fedora.redhat.com/pub/fedora/linux/releases/' + opt['release'] + '/Everything/' + opt['arch'] + '/os'
+
+if not opt['metadata']: 
+    opt['metadata'] = 'primary-' + opt['arch'] + '.sqlite'
+
+if not os.path.isfile(opt['metadata']):
+    if os.path.isfile(opt['metadata'] + '.bz2'):
+        print 'Decompressing metadata...'
+        decompressed = open(opt['metadata'],'w')
+        compressed = bz2.BZ2File(opt['metadata'] + '.bz2')
+        decompressed.write(compressed.read())
+        compressed.close()
+        decompressed.close()
+    else:
+        print 'The metadata does not exist.'
+        if opt['download']:
+        
+            #Download the page and extract the link
+            if not opt['quiet']:
+                print 'Fetching: ' + opt['baseurl'] + '/repodata/'
+                req = urllib2.Request(opt['baseurl'] + '/repodata/',None,ua)
+                buf = ''
+                for char in urllib2.urlopen(req).read():
+                    buf += char.rstrip('\n')
+                matched = re.search('href="([^"]+primary\.sqlite\.bz2)"',buf)
+                if matched:
+                    metadata = open(opt['metadata'] + '.bz2','w')
+                    if not opt['quiet']:
+                        print 'Matched: ' + matched.group(1)
+                        metadata.write(urllib2.urlopen(urllib2.Request(opt['baseurl'] + '/repodata/' + matched.group(1),None,ua)).read())
+                        metadata.close()
+                        decompressed = open(opt['metadata'],'w')
+                        compressed = bz2.BZ2File(opt['metadata'] + '.bz2')
+                        decompressed.write(compressed.read())
+                        compressed.close()
+                        decompressed.close()
+                    else:
+                        print 'Could not download the metadata.Try again latter.'
+                        sys.exit(1)
+
+if not opt['justdownload']:
+    if os.path.isfile(PKGLIST_PATH):
+        os.unlink(PKGLIST_PATH)
+    con = sqlite3.connect(opt['metadata'])
+    cur = con.cursor()
+    PKGLIST = open(PKGLIST_PATH,'w')
+    for pkg in opt['pkgs']:
+	print '\n> ' + pkg + '\n'
+        cur.execute('select packages.location_href from packages where packages.name = "' + pkg + '"')
+        PKGLIST.write(opt['baseurl'] + '/' + cur.fetchone()[0] + '\n')
+	walkTree(pkg)
+    PKGLIST.close()
+    if os.path.isfile(PKGLIST_PATH):
+	makeUnique()
+    con.close()
+if opt['download']:
+    download

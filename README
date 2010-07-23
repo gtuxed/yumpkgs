@@ -1,0 +1,15 @@
+* FIRST, RETREIVING THE LIST OF PACKAGES
+
+First in you in your linux distro run:
+
+./yumpkgs -d -p package1,package2,packageN
+
+* DOWNLOADING
+
+Now that you probably need to use Windows to get
+access to the internet, no problem, just execute de
+file named "download.bat" and everything will be fine.
+
+* SOURCES
+
+This little script uses the wget from http://gnuwin32.sourceforge.net/.
