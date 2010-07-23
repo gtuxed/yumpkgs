@@ -18,16 +18,17 @@ con = None
 #Browser
 ua = { 'User-agent' : 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US) AppleWebKit/532.5 (KHTML, like Gecko) Chrome/3.0.195.38 Safari/532.5' }
 
-#List that holds the file names to download
+#List that holds the file names to down
 PKGLIST_PATH = PROG_DIR + '/downloads.list'
 PKGLIST = 0
 
 #Command line options
 opt = {'arch' : 'i386', 
        'baseurl' : '', 
-       'download' : 0,
+       'down' : 0,
        'install' : 0,
-       'justdownload' : 0, 
+       'justdown' : 0, 
+       'downdir' : '',
        'metadata' : '',
        'pkgs' : [], 
        'quiet' : 0,
@@ -42,15 +43,16 @@ def helpmsg():
 
 OPTIONS
 
--q change to the quiet mode
--m specify the metadata
--b specify the baseurl
--D specify the program directory
--d download the metadata and the packages if needed
--r specify the release(from 1 to current)
--a specify the arch(i386, x86_64, etc.)
--i install the packages
--h display help message (this message)
+-q             change to the quiet mode
+-m <metadata>  specify the metadata
+-b <baseurl>   specify the baseurl
+-D <dir>       specify the program directory
+-d             download the metadata and the packages if needed
+-r <rel>       specify the release(from 1 to current)
+-a <arch>      specify the arch(i386, x86_64, etc.)
+-i             display an ordered list of packages to be installed
+-h             display the help message (this message)
+-s <regex>     display package names matching a regex
 
 PKGNAME
 
@@ -113,14 +115,6 @@ def walkTree(pkg):
 	    nodes[name[0][0]] = 1
 	    walkTree(name[0][0])
 
-#Download the packages
-def download():
-    global PROG_DIR
-    print '* Downloading packages'
-    for line in open(PKGLIST_PATH):
-        print line
-        open(PROG_DIR + '/downloads/' + os.path.basename(line)).write(urllib2.urlopen(line).read())
-
 #Make the entries unique
 def makeUnique():
 
@@ -145,46 +139,63 @@ def installPkgs():
     #Variables
     global PKGLIST_PATH, PROG_DIR
 
-    for pkg in open(PKGLIST_PATH):
-	pkgfile = PROG_DIR + '/downloads/' + os.path.basename(pkg)
+    for pkgurl in open(PKGLIST_PATH):
+        pkgname = os.path.basename(pkgurl).rstrip('\n')
+	pkgfile = opt['downdir'] + '/' + pkgname
 	if os.path.isfile(pkgfile):
-	    print 'rpm -i ' + pkgfile,
+	    print 'rpm -i ' + pkgfile
 	else:
-	    print 'Missing: ' + pkgfile,
+	    print 'Missing: ' + pkgfile
+            if opt['down']:
+                print 'Downloading...'
+                down(pkgurl,opt['downdir'] + '/' + pkgname)
+
+#Download files
+def down(url,location):
+    dest = open(location,'w')
+    dest.write(urllib2.urlopen(urllib2.Request(url,None,ua)).read())
+    dest.close()
 
 #START
 
 #Handle the command line arguments
-opts, args = getopt.getopt(sys.argv[1:],'hb:dD:ijm:p:q')   
+opts, args = getopt.getopt(sys.argv[1:],'hb:dD:ijm:p:qs:x:')   
 for o, val in opts:
     if o == '-h':
         helpmsg()
     elif o == '-b': 
         opt['baseuri'] = val
     elif o == '-d': 
-        opt['download'] = 1
+        opt['down'] = 1
     elif o == '-D': 
         PROG_DIR = val
     elif o == '-i': 
         opt['install'] = 1
     elif o == '-j': 
-        opt['justdownload'] = 1
+        opt['justdown'] = 1
     elif o == '-m': 
         opt['metadata'] = val
     elif o == '-p': 
         opt['pkgs'] = val.split(',')
     elif o == '-q': 
         opt['quiet'] = 1
+    elif o == '-s': 
+        opt['search'] = val
+    elif o == '-x': 
+        opt['downdir'] = val
     else:
         print 'Unknown option: ' + o
         helpmsg()
+
+if not opt['downdir']:
+    opt['downdir'] = PROG_DIR + '/downloads'
 
 if opt['install']:
     makeUnique()
     installPkgs()
     sys.exit()
 
-if not opt['pkgs']:
+if not opt['pkgs'] and not opt['search']:
     print 'Please specify at least one package name.'
     print 'Ex.: ' + PROG_NAME + ' -p glibc'
     sys.exit(1)
@@ -193,10 +204,10 @@ if not opt['baseurl']:
     if not opt['arch'] or not opt['release']:
 	print "Please specify the an architecture and and release."
         sys.exit(1)
-    opt['baseurl'] = 'http://download.fedora.redhat.com/pub/fedora/linux/releases/' + opt['release'] + '/Everything/' + opt['arch'] + '/os'
+    opt['baseurl'] = 'http://down.fedora.redhat.com/pub/fedora/linux/releases/' + opt['release'] + '/Everything/' + opt['arch'] + '/os'
 
 if not opt['metadata']: 
-    opt['metadata'] = 'primary-' + opt['arch'] + '.sqlite'
+    opt['metadata'] = PROG_DIR + '/primary-' + opt['arch'] + '.sqlite'
 
 if not os.path.isfile(opt['metadata']):
     if os.path.isfile(opt['metadata'] + '.bz2'):
@@ -208,9 +219,9 @@ if not os.path.isfile(opt['metadata']):
         decompressed.close()
     else:
         print 'The metadata does not exist.'
-        if opt['download']:
+        if opt['down']:
         
-            #Download the page and extract the link
+            #Down the page and extract the link
             if not opt['quiet']:
                 print 'Fetching: ' + opt['baseurl'] + '/repodata/'
                 req = urllib2.Request(opt['baseurl'] + '/repodata/',None,ua)
@@ -219,25 +230,28 @@ if not os.path.isfile(opt['metadata']):
                     buf += char.rstrip('\n')
                 matched = re.search('href="([^"]+primary\.sqlite\.bz2)"',buf)
                 if matched:
-                    metadata = open(opt['metadata'] + '.bz2','w')
                     if not opt['quiet']:
                         print 'Matched: ' + matched.group(1)
-                        metadata.write(urllib2.urlopen(urllib2.Request(opt['baseurl'] + '/repodata/' + matched.group(1),None,ua)).read())
-                        metadata.close()
+                        down(opt['baseurl'] + '/repodata/' + matched.group(1),opt['metadata'] + '.bz2')
                         decompressed = open(opt['metadata'],'w')
                         compressed = bz2.BZ2File(opt['metadata'] + '.bz2')
                         decompressed.write(compressed.read())
                         compressed.close()
                         decompressed.close()
                     else:
-                        print 'Could not download the metadata.Try again latter.'
+                        print 'Could not down the metadata.Try again latter.'
                         sys.exit(1)
 
-if not opt['justdownload']:
+if not opt['justdown']:
     if os.path.isfile(PKGLIST_PATH):
         os.unlink(PKGLIST_PATH)
     con = sqlite3.connect(opt['metadata'])
     cur = con.cursor()
+    if opt['search']:
+        cur.execute('select packages.name from packages')
+        for row in cur.fetchall():
+            if re.search(opt['search'],row[0]):
+                print row[0]
     PKGLIST = open(PKGLIST_PATH,'w')
     for pkg in opt['pkgs']:
 	print '\n> ' + pkg + '\n'
@@ -248,5 +262,5 @@ if not opt['justdownload']:
     if os.path.isfile(PKGLIST_PATH):
 	makeUnique()
     con.close()
-if opt['download']:
-    download
+if opt['down']:
+    down

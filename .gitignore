@@ -1,4 +1,5 @@
 downloads/*
 downloads.list
 *.sqlite*
+*.tmp
 

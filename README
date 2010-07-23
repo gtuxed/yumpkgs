@@ -14,7 +14,7 @@ Windows stations.
 
 I had to do something.
 
-* FIRST, RETREIVING THE LIST OF PACKAGES
+* FIRST, RETRIEVING THE LIST OF PACKAGES
 
 First in you in your Linux distro run:
 
@@ -28,9 +28,9 @@ file named "download.bat" and everything will be fine.
 
 * SOURCES AND DEPENDENCIES
 
-- Wget: this little script uses the wget from http://gnuwin32.sourceforge.net.
-- Python: this tools requires the python language interpreter, you can find it
-at http://www.python.org
+- Wget: wget can be downloaded from http://gnuwin32.sourceforge.net.
+- Python: the python language interpreter, you can find it at http://www.python.org
+- SQLite: the database engine can be found at http://www.sqlite.org/
 
 For advanced users I recomend the usage of the cygwin because it integrates everything and
 makes the environment more Unix-like.
@@ -38,3 +38,12 @@ makes the environment more Unix-like.
 * FOR NEWS
 
 I might not update this README everytime, for that purpose I'll use my blog at http://gtuxed.blogspot.com
+
+Feel free to go there and make comments.
+
+* AND MORE
+
+That is my first python program, don't get crazy if you see strange things.
+
+
+:)
