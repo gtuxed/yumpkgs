@@ -35,7 +35,10 @@ release:
 	git archive --format=zip -o releases/yumpkgs-$(VERSION).zip $(VERSION)
 	echo "<p>This is automatically generated whenever a new release is build.</p>Log:<pre class=\"cli\">" > blogger-post.html
 	git log >> blogger-post.html
-	echo '</pre>' >> blogger-post.html
+	echo "</pre><p>The release can be downloaded from here: <a href=\"http://github.com/gtuxed/yumpkgs/raw/master/releases/yumpkgs-$(VERSION).zip\">yumpkgs-$(VERSION).zip</a>." >> blogger-post.html
+	git add releases/yumpkgs-$(VERSION).zip
+	git commit -m "Release $(VERSION)"
+	git push github
 	google blogger post -n "yumpkgs-$(VERSION)" -t "yumpkgs,FOSS,Windows,English" blogger-post.html
 
 #install: install the programs
