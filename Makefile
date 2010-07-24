@@ -3,6 +3,7 @@
 INSTALL		= install
 PROGRAMS 	= yumpkgs
 VERSION		= HEAD
+REVCHANGES	= 20
 
 #TARGETS
 
@@ -33,8 +34,8 @@ run: $(PROGRAMS)
 #release VERSION=<version>(ex.: v0.04): make a release
 release:
 	git archive --format=zip -o releases/yumpkgs-$(VERSION).zip $(VERSION)
-	echo "<p>This is automatically generated whenever a new release is build.</p>Log:<pre class=\"cli\">" > blogger-post.html
-	git log >> blogger-post.html
+	echo "<p>This is automatically generated whenever a new release is built.</p>Bellow are $(REVCHANGES) revision changes until the release of this version.<pre class=\"cli\">" > blogger-post.html
+	git log $(VERSION) -$(REVCHANGES) >> blogger-post.html
 	echo "</pre><p>The release can be downloaded from here: <a href=\"http://github.com/gtuxed/yumpkgs/raw/master/releases/yumpkgs-$(VERSION).zip\">yumpkgs-$(VERSION).zip</a>." >> blogger-post.html
 	git add releases/yumpkgs-$(VERSION).zip
 	git commit -m "Release $(VERSION)"
