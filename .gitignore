@@ -1,5 +1,7 @@
 downloads/*
+!downloads/.keep
 downloads.list
+releases/*
 *.sqlite*
 *.tmp
 
