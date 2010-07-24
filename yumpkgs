@@ -205,7 +205,7 @@ if not opt['baseurl']:
     if not opt['arch'] or not opt['rel']:
 	print "Please specify the an architecture and and release."
         sys.exit(1)
-    opt['baseurl'] = 'http://down.fedora.redhat.com/pub/fedora/linux/releases/' + opt['rel'] + '/Everything/' + opt['arch'] + '/os'
+    opt['baseurl'] = 'http://download.fedora.redhat.com/pub/fedora/linux/releases/' + opt['rel'] + '/Everything/' + opt['arch'] + '/os'
 
 if not opt['metadata']: 
     opt['metadata'] = PROG_DIR + '/primary-' + opt['arch'] + '.sqlite'

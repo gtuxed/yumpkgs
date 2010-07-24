@@ -3,6 +3,7 @@
 INSTALL		= install
 PROGRAMS 	= yumpkgs
 VERSION		= HEAD
+
 #TARGETS
 
 .PHONY: all help proghelp release
@@ -29,9 +30,13 @@ run: $(PROGRAMS)
 		./$$p; \
 	done
 
-#release <version>(ex.: v0.04): make a release tarball
+#release VERSION=<version>(ex.: v0.04): make a release
 release:
 	git archive --format=zip -o releases/yumpkgs-$(VERSION).zip $(VERSION)
+	echo "<p>This is automatically generated whenever a new release is build.</p>Log:<pre class=\"cli\">" > blogger-post.html
+	git log >> blogger-post.html
+	echo '</pre>' >> blogger-post.html
+	google blogger post -n "yumpkgs-$(VERSION)" -t "yumpkgs,FOSS,Windows,English" blogger-post.html
 
 #install: install the programs
 install:

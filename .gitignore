@@ -1,7 +1,7 @@
 downloads/*
 !downloads/.keep
 downloads.list
-releases/*
+blogger-post.html
 *.sqlite*
 *.tmp
 
