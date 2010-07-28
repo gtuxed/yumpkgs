@@ -7,22 +7,16 @@ REVCHANGES	= 20
 
 #TARGETS
 
-.PHONY: all help proghelp release
+.PHONY: all help release
 
 #all: generate the programs and some other targets
-all: $(PROGRAMS) proghelp
+all: $(PROGRAMS)
 
 #help: display this message
 help:
 	@echo -e "Some useful targets are:\n"
 	@grep -E '^#[^:]+:' Makefile|tr -d '#'
 	@echo ''
-
-#proghelp: generate the programs help file
-proghelp:
-	for p in $(PROGRAMS);do \
-		egrep -o '#\*.+' $$p|sed 's/#\*//g' > $$p.help;  \
-	done
 
 #run: run every compiled program
 run: $(PROGRAMS)

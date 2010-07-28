@@ -2,7 +2,8 @@
 
 #IMPORTS
 
-import os, sys, sqlite3, getopt, urllib2, re, bz2
+import os, sys, sqlite3, getopt, urllib2, re, bz2, pygtk, gtk,gtk.glade
+pygtk.require("2.0")
 
 #GLOBAL VARIABLES
 
@@ -12,6 +13,7 @@ PROG_NAME = os.path.basename(sys.path[0])
 
 #Metadata
 nodes = {}
+pkgsloc = []
 cur = None
 con = None
 
@@ -20,7 +22,7 @@ ua = { 'User-agent' : 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US) AppleWebK
 
 #List that holds the file names to download
 PKGLIST_PATH = PROG_DIR + '/downloads.list'
-PKGLIST = 0
+PKGLIST = None
 
 #Command line options
 opt = {'arch' : 'i386', 
@@ -28,6 +30,7 @@ opt = {'arch' : 'i386',
        'down' : 0,
        'downdir' : '',
        'install' : 0,
+       'gui' : 0, 
        'justdown' : 0, 
        'metadata' : '',
        'pkgs' : [], 
@@ -35,6 +38,14 @@ opt = {'arch' : 'i386',
        'rel' : '13',
        'search' : '',
        }
+
+#GUI
+builder = None
+window = None
+treeview = None
+liststore = None
+entry = None
+button = None
 
 #FUNCTIONS
 
@@ -72,7 +83,7 @@ $ ''' + PROG_NAME + ' -q -p bash,gcc'
 def walkTree(pkg):
 
     #Variables
-    global PKGLIST, nodes
+    global pkgsloc, nodes
     names = []
     deps = []
 
@@ -93,46 +104,38 @@ def walkTree(pkg):
         pkgKey = cur.fetchone()
         if pkgKey:
             cur.execute("select packages.name from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
-            names.append(cur.fetchall())
+            newname = cur.fetchone()[0]
+            if newname not in names:
+                names.append(newname)
             cur.execute("select packages.location_href from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
-            for row in cur.fetchall():
-                PKGLIST.write(opt['baseurl'] + '/' + row[0] + '\n')
-    tmplist = []
-    for e in names: 
-        if e not in tmplist: 
-            tmplist.append(e) 
-    names = tmplist
+            pkgloc = cur.fetchone()[0]
+            if pkgloc not in pkgsloc:
+                pkgsloc.append(pkgloc)
 
     if not opt['quiet']:
         for name in names:
-            print name[0][0],
+            print name,
 
     #While its a "node" we need to walk
     for name in names:
-	if not nodes.get(name[0][0],0):
+	if not nodes.get(name,0):
 	    if not opt['quiet']:
-                print '\n\n* Walking: ' + name[0][0]
-	    #nodes[name[0][0]] = 1
-	    nodes[name[0][0]] = 1
-	    walkTree(name[0][0])
+                print '\n\n* Walking: ' + name
+	    nodes[name] = 1
+	    walkTree(name)
 
 #Make the entries unique
-def makeUnique():
+def depsToFile():
 
     #Variables
-    global PKGLIST_PATH
-    if os.path.isfile(PKGLIST_PATH + '.tmp'):
-        os.unlink(PKGLIST_PATH + '.tmp')
-    TMPLIST = open(PKGLIST_PATH + '.tmp','w')
-    tmplist = []
+    global pkgsloc,PKGLIST,liststore
+    PKGLIST = open(PKGLIST_PATH,'w')    
 
-    for pkg in open(PKGLIST_PATH):
-	if pkg not in tmplist:
-	    tmplist.append(pkg)
-    tmplist.reverse()
-    for item in tmplist:
-	TMPLIST.write(item)
-    os.rename(PKGLIST_PATH + '.tmp',PKGLIST_PATH)
+    pkgsloc.reverse()
+    for loc in pkgsloc:
+	PKGLIST.write(opt['baseurl'] + '/' + loc + '\n')
+        if opt['gui']: liststore.append([loc])
+    PKGLIST.close()
 
 #List the pacakges to be installed in order to be installed
 def installPkgs():
@@ -157,10 +160,71 @@ def down(url,location):
     dest.write(urllib2.urlopen(urllib2.Request(url,None,ua)).read())
     dest.close()
 
+#Get dependencies
+def getDeps(widget,event):
+
+    #Variables
+    global entry,cur,pkgsloc,nodes,liststore
+
+    #If in GUI mode
+    if opt['gui']: 
+        if event.keyval == gtk.keysyms.Return: 
+            liststore.clear()
+            nodes = {}
+            pkgsloc = []
+            text = entry.get_text()
+            if(text != ''): opt['pkgs'] = text.split(',')
+        else:
+            return(0)
+
+    for pkg in opt['pkgs']:
+        if not nodes.get(pkg,0):
+            nodes[pkg] = 1
+        else:
+            continue
+        print '\n> ' + pkg + '\n'
+        cur.execute('select packages.location_href from packages where packages.name = "' + pkg + '"')
+        pkgloc = cur.fetchone()[0]
+        pkgsloc.append(pkgloc)
+        walkTree(pkg)
+    depsToFile()
+    
+#Initialize the GUI
+def initGUI():
+
+    #Varisbles
+    global builder,window,treeview,liststore,entry,button
+
+    #Retrieve objects
+    builder = gtk.Builder()
+    builder.add_from_file("gui.glade")
+    window = builder.get_object("window1")
+    treeview = builder.get_object("treeview1")
+    entry = builder.get_object("entry1")
+    button = builder.get_object("button1")
+
+    #Connect events
+    window.connect("destroy",gtk.main_quit)
+    button.connect("button-press-event",getDeps)
+    button.connect("key-press-event",getDeps)
+
+    #Create the treeview
+    liststore = gtk.ListStore(str)
+    treeview.set_model(liststore)
+    renderer = gtk.CellRendererText()
+    tvcolumn = gtk.TreeViewColumn('Packages',renderer,text=0)
+    treeview.append_column(tvcolumn)
+
+    #Show
+    window.show_all()
+
+    #Start the gtk loop
+    gtk.main()
+
 #START
 
 #Handle the command line arguments
-opts, args = getopt.getopt(sys.argv[1:],'hb:dD:ijm:p:qs:x:')   
+opts, args = getopt.getopt(sys.argv[1:],'hb:dD:gijm:p:qs:x:')   
 for o, val in opts:
     if o == '-h':
         helpmsg()
@@ -170,6 +234,8 @@ for o, val in opts:
         opt['down'] = 1
     elif o == '-D': 
         PROG_DIR = val
+    elif o == '-g': 
+        opt['gui'] = 1
     elif o == '-i': 
         opt['install'] = 1
     elif o == '-j': 
@@ -188,28 +254,33 @@ for o, val in opts:
         print 'Unknown option: ' + o
         helpmsg()
 
+#Download directory
 if not opt['downdir']:
     opt['downdir'] = PROG_DIR + '/downloads'
 
+#Installation
 if opt['install']:
-    makeUnique()
     installPkgs()
     sys.exit()
 
-if not opt['pkgs'] and not opt['search']:
+#Checking if package names was supplied
+if not opt['pkgs'] and not opt['search'] and not opt['gui']:
     print 'Please specify at least one package name.'
     print 'Ex.: ' + PROG_NAME + ' -p glibc'
     sys.exit(1)
 
+#Base URL to the metadata
 if not opt['baseurl']:
     if not opt['arch'] or not opt['rel']:
 	print "Please specify the an architecture and and release."
         sys.exit(1)
     opt['baseurl'] = 'http://download.fedora.redhat.com/pub/fedora/linux/releases/' + opt['rel'] + '/Everything/' + opt['arch'] + '/os'
 
+#Metadata file name
 if not opt['metadata']: 
     opt['metadata'] = PROG_DIR + '/primary-' + opt['arch'] + '.sqlite'
 
+#Check the existence of metadata
 if not os.path.isfile(opt['metadata']):
     if os.path.isfile(opt['metadata'] + '.bz2'):
         print 'Decompressing metadata...'
@@ -222,7 +293,7 @@ if not os.path.isfile(opt['metadata']):
         print 'The metadata does not exist.'
         if opt['down']:
         
-            #Down the page and extract the link
+            #Download the page and extract the link
             if not opt['quiet']:
                 print 'Fetching: ' + opt['baseurl'] + '/repodata/'
                 req = urllib2.Request(opt['baseurl'] + '/repodata/',None,ua)
@@ -243,6 +314,7 @@ if not os.path.isfile(opt['metadata']):
                         print 'Could not down the metadata.Try again latter.'
                         sys.exit(1)
 
+#Just download
 if not opt['justdown']:
     if os.path.isfile(PKGLIST_PATH):
         os.unlink(PKGLIST_PATH)
@@ -253,15 +325,8 @@ if not opt['justdown']:
         for row in cur.fetchall():
             if re.search(opt['search'],row[0]):
                 print row[0]
-    PKGLIST = open(PKGLIST_PATH,'w')
-    for pkg in opt['pkgs']:
-	print '\n> ' + pkg + '\n'
-        cur.execute('select packages.location_href from packages where packages.name = "' + pkg + '"')
-        PKGLIST.write(opt['baseurl'] + '/' + cur.fetchone()[0] + '\n')
-	walkTree(pkg)
-    PKGLIST.close()
-    if os.path.isfile(PKGLIST_PATH):
-	makeUnique()
+    if opt['gui']:
+        initGUI()
+    else:
+        getDeps(None,None)
     con.close()
-if opt['down']:
-    down
