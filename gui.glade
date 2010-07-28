@@ -3,7 +3,8 @@
   <requires lib="gtk+" version="2.16"/>
   <!-- interface-naming-policy project-wide -->
   <object class="GtkWindow" id="window1">
-    <property name="title" translatable="yes">Yumpkgs</property>
+    <property name="title" translatable="yes">yumpkgs</property>
+    <property name="icon_name">system-software-update</property>
     <child>
       <object class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -12,21 +13,28 @@
           <object class="GtkHBox" id="hbox1">
             <property name="visible">True</property>
             <child>
-              <object class="GtkLabel" id="label1">
+              <object class="GtkEntry" id="entry1">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Package names:</property>
+                <property name="can_focus">True</property>
+                <property name="tooltip_text" translatable="yes">If you want the dependencies, type the package name and click "OK".
+
+If you are looking for a package name, type the pattern (POSIX Regex) and click "Find".</property>
+                <property name="invisible_char">&#x25CF;</property>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
+                <property name="padding">10</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="entry1">
+              <object class="GtkButton" id="button1">
+                <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="invisible_char">&#x25CF;</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -35,11 +43,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="button1">
-                <property name="label" translatable="yes">Start</property>
+              <object class="GtkButton" id="button2">
+                <property name="label">gtk-find</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -47,9 +56,17 @@
                 <property name="position">2</property>
               </packing>
             </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="padding">3</property>
             <property name="position">0</property>
           </packing>
         </child>

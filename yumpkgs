@@ -45,7 +45,8 @@ window = None
 treeview = None
 liststore = None
 entry = None
-button = None
+btOk = None
+btFind = None
 
 #FUNCTIONS
 
@@ -59,6 +60,7 @@ OPTIONS
 -m <metadata>  specify the metadata
 -b <baseurl>   specify the baseurl
 -D <dir>       specify the program directory
+-g             add the graphical usuer interface (GUI)
 -d             download the metadata and the packages if needed
 -r <rel>       specify the release(from 1 to current)
 -a <arch>      specify the arch(i386, x86_64, etc.)
@@ -168,12 +170,14 @@ def getDeps(widget,event):
 
     #If in GUI mode
     if opt['gui']: 
-        if event.keyval == gtk.keysyms.Return: 
-            liststore.clear()
-            nodes = {}
-            pkgsloc = []
-            text = entry.get_text()
-            if(text != ''): opt['pkgs'] = text.split(',')
+        if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
+            return(0)
+        liststore.clear()
+        nodes = {}
+        pkgsloc = []
+        text = entry.get_text()
+        if(text != ''): 
+            opt['pkgs'] = text.split(',')
         else:
             return(0)
 
@@ -189,11 +193,40 @@ def getDeps(widget,event):
         walkTree(pkg)
     depsToFile()
     
+#Search for packages
+def searchPkgs(widget,event):
+
+    #Variables
+    global entry,cur,pkgsloc,nodes,liststore
+    regex = ''
+    matches = []
+
+    #If in GUI mode
+    if opt['gui']: 
+        if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
+            return(0)
+        liststore.clear()
+        nodes = {}
+        pkgsloc = []
+        regex = entry.get_text()
+
+    cur.execute('select packages.name from packages')
+    for row in cur.fetchall():
+        if re.search(regex,row[0]):
+            matches.append([row[0]])
+            exit
+    matches.sort()
+    for match in matches:
+        if opt['gui']:
+            liststore.append(match)
+        else:
+            print match
+
 #Initialize the GUI
 def initGUI():
 
     #Varisbles
-    global builder,window,treeview,liststore,entry,button
+    global builder,window,treeview,liststore,entry,btOk
 
     #Retrieve objects
     builder = gtk.Builder()
@@ -201,12 +234,15 @@ def initGUI():
     window = builder.get_object("window1")
     treeview = builder.get_object("treeview1")
     entry = builder.get_object("entry1")
-    button = builder.get_object("button1")
+    btOk = builder.get_object("button1")
+    btFind = builder.get_object("button2")
 
     #Connect events
     window.connect("destroy",gtk.main_quit)
-    button.connect("button-press-event",getDeps)
-    button.connect("key-press-event",getDeps)
+    btOk.connect("button-press-event",getDeps)
+    btFind.connect("button-press-event",searchPkgs)
+    btOk.connect("key-press-event",getDeps)
+    btFind.connect("key-press-event",searchPkgs)
 
     #Create the treeview
     liststore = gtk.ListStore(str)
@@ -221,6 +257,7 @@ def initGUI():
     #Start the gtk loop
     gtk.main()
 
+            
 #START
 
 #Handle the command line arguments
@@ -320,13 +357,11 @@ if not opt['justdown']:
         os.unlink(PKGLIST_PATH)
     con = sqlite3.connect(opt['metadata'])
     cur = con.cursor()
-    if opt['search']:
-        cur.execute('select packages.name from packages')
-        for row in cur.fetchall():
-            if re.search(opt['search'],row[0]):
-                print row[0]
     if opt['gui']:
         initGUI()
     else:
-        getDeps(None,None)
+        if opt['search']:
+            searchPkgs()
+        else:
+            getDeps(None,None)
     con.close()
