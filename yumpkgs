@@ -47,6 +47,8 @@ liststore = None
 entry = None
 btOk = None
 btFind = None
+col = None
+col2 = None
 
 #FUNCTIONS
 
@@ -102,14 +104,14 @@ def walkTree(pkg):
     if not opt['quiet']: 
         print '* Deps - package names: ',
     for row in deps:
-        cur.execute("select provides.pkgKey from provides where provides.name = '" + row[0] + "'")
+        cur.execute("select pkgKey from provides where provides.name = '" + row[0] + "'")
         pkgKey = cur.fetchone()
         if pkgKey:
-            cur.execute("select packages.name from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
+            cur.execute("select name from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
             newname = cur.fetchone()[0]
             if newname not in names:
                 names.append(newname)
-            cur.execute("select packages.location_href from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
+            cur.execute("select location_href from packages where packages.pkgKey = '" + str(pkgKey[0]) + "'")
             pkgloc = cur.fetchone()[0]
             if pkgloc not in pkgsloc:
                 pkgsloc.append(pkgloc)
@@ -130,13 +132,19 @@ def walkTree(pkg):
 def depsToFile():
 
     #Variables
-    global pkgsloc,PKGLIST,liststore
-    PKGLIST = open(PKGLIST_PATH,'w')    
+    global pkgsloc,PKGLIST,liststore,col,col2,treeview
+    order = 1
 
+    treeview.show()
+    col.set_title('Location')
+    col2.set_title('Install order')
+    PKGLIST = open(PKGLIST_PATH,'w')    
     pkgsloc.reverse()
     for loc in pkgsloc:
 	PKGLIST.write(opt['baseurl'] + '/' + loc + '\n')
-        if opt['gui']: liststore.append([loc])
+        if opt['gui']: 
+            liststore.append([loc,order])
+            order += 1
     PKGLIST.close()
 
 #List the pacakges to be installed in order to be installed
@@ -187,46 +195,57 @@ def getDeps(widget,event):
         else:
             continue
         print '\n> ' + pkg + '\n'
-        cur.execute('select packages.location_href from packages where packages.name = "' + pkg + '"')
+        cur.execute('select location_href from packages where packages.name = "' + pkg + '"')
         pkgloc = cur.fetchone()[0]
         pkgsloc.append(pkgloc)
         walkTree(pkg)
     depsToFile()
     
+
+def search(regex):
+
+    #Variables
+    global cur
+    matches = {}
+
+    cur.execute('select name,version from packages')
+    for row in cur.fetchall():
+        if re.search(regex,row[0]):
+            matches[row[0]] = row[1]
+    return matches
+    
 #Search for packages
 def searchPkgs(widget,event):
 
     #Variables
-    global entry,cur,pkgsloc,nodes,liststore
+    global entry,cur,liststore,treeview
     regex = ''
-    matches = []
+    pkgs = {}
 
     #If in GUI mode
     if opt['gui']: 
+        treeview.show()
+        col.set_title('Package name')
+        col2.set_title('Version')
         if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
             return(0)
         liststore.clear()
-        nodes = {}
-        pkgsloc = []
         regex = entry.get_text()
 
-    cur.execute('select packages.name from packages')
-    for row in cur.fetchall():
-        if re.search(regex,row[0]):
-            matches.append([row[0]])
-            exit
-    matches.sort()
-    for match in matches:
+    pkgs = search(regex)
+    if not opt['gui']: 
+        print '%-40s %s\n' % ('NAME','VERSION')
+    for name in pkgs.keys():
         if opt['gui']:
-            liststore.append(match)
+            liststore.append([name,pkgs[name]])
         else:
-            print match
+            print '%-40s %s' % (name,pkgs[name])
 
 #Initialize the GUI
 def initGUI():
 
     #Varisbles
-    global builder,window,treeview,liststore,entry,btOk
+    global builder,window,treeview,liststore,entry,btOk,col,col2
 
     #Retrieve objects
     builder = gtk.Builder()
@@ -245,14 +264,18 @@ def initGUI():
     btFind.connect("key-press-event",searchPkgs)
 
     #Create the treeview
-    liststore = gtk.ListStore(str)
+    liststore = gtk.ListStore(str,str)
     treeview.set_model(liststore)
-    renderer = gtk.CellRendererText()
-    tvcolumn = gtk.TreeViewColumn('Packages',renderer,text=0)
-    treeview.append_column(tvcolumn)
+    rend = gtk.CellRendererText()
+    rend2 = gtk.CellRendererText()
+    col = gtk.TreeViewColumn('',rend,text=0)
+    col2 = gtk.TreeViewColumn('',rend2,text=1)
+    treeview.append_column(col)
+    treeview.append_column(col2)
 
     #Show
     window.show_all()
+    treeview.hide()
 
     #Start the gtk loop
     gtk.main()
@@ -361,7 +384,7 @@ if not opt['justdown']:
         initGUI()
     else:
         if opt['search']:
-            searchPkgs()
+            searchPkgs(None,None)
         else:
             getDeps(None,None)
     con.close()

@@ -16,7 +16,7 @@ I had to do something.
 
 * FIRST, RETRIEVING THE LIST OF PACKAGES
 
-First your Linux distro run the following commands.
+First in your Linux distro, run the following commands to generate the "downloads.list".
 
 ** With CLI/CUI
 
@@ -30,7 +30,9 @@ First your Linux distro run the following commands.
 
 Now that you probably need to use Windows to get
 access to the internet, no problem, just execute de
-file named "download.bat" and everything will be fine.
+file named "download.bat".The "download.bat" file 
+uses the "downloads.list" to download the files 
+necessary to install the supplied packages.
 
 * SOURCES AND DEPENDENCIES
 
@@ -46,6 +48,11 @@ and makes the environment more Unix-like.
 I might not update this README everytime, for that purpose I'll use my blog at http://gtuxed.blogspot.com
 
 Feel free to go there and make comments.
+
+* PLANNING
+
+For the v1.00 I'm thinking about a feature tha would make possible
+build a "downloads.list" based on the packages that should be upgraded.
 
 * AND MORE
 
