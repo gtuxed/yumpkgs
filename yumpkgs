@@ -135,9 +135,11 @@ def depsToFile():
     global pkgsloc,PKGLIST,liststore,col,col2,treeview
     order = 1
 
-    treeview.show()
-    col.set_title('Location')
-    col2.set_title('Install order')
+    if opt['gui']:
+        treeview.show()
+        col.set_title('Location')
+        col2.set_title('Install order')
+
     PKGLIST = open(PKGLIST_PATH,'w')    
     pkgsloc.reverse()
     for loc in pkgsloc:
