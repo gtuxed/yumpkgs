@@ -281,7 +281,6 @@ def initGUI():
 
     #Start the gtk loop
     gtk.main()
-
             
 #START
 
