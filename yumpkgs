@@ -227,7 +227,7 @@ def update(widget,event):
         col.set_title('NAME')
         col2.set_title('NEW VERSION')
         liststore.clear()
-    rpm = os.popen("./rpm -qa")
+    rpm = os.popen("rpm -qa")
     if not opt['gui']:
         print '%-20s %s\n' % ('NAME','NEW VERSION')
     for line in rpm.readlines():
