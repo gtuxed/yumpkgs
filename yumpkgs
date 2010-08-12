@@ -50,6 +50,7 @@ btOk = None
 btFind = None
 col = None
 col2 = None
+pbar = None
 
 #FUNCTIONS
 
@@ -138,7 +139,7 @@ def depsToFile():
 
     if opt['gui'] and not opt['update']:
         treeview.show()
-        col.set_title('LOCATION')
+        col.set_title('PACKAGE NAME')
         col2.set_title('INSTALL ORDER')
 
     PKGLIST = open(PKGLIST_PATH,'w')    
@@ -146,7 +147,8 @@ def depsToFile():
     for loc in pkgsloc:
 	PKGLIST.write(opt['baseurl'] + '/' + loc + '\n')
         if opt['gui'] and not opt['update']: 
-            liststore.append([loc,order])
+            
+            liststore.append([loc.replace('Packages/',''),order])
             order += 1
     PKGLIST.close()
 
@@ -197,7 +199,7 @@ def getDeps(widget,event):
             nodes[pkg] = 1
         else:
             continue
-        if not opt['quiet']: print '\n> ' + pkg + '\n'
+        if not opt['quiet']: print '\n\n> ' + pkg + '\n'
         cur.execute('select location_href from packages where packages.name = "' + pkg + '"')
         pkgloc = cur.fetchone()[0]
         pkgsloc.append(pkgloc)
