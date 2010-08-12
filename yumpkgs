@@ -214,6 +214,7 @@ def toVersion(string):
 def update():
 
     global col,col2,treeview,liststore
+    updatelist = []
 
     rpm = os.popen("./rpm -qa")
     if opt['gui']: 
@@ -233,12 +234,15 @@ def update():
         for name in found.keys():
             norm_found_version = toVersion(found[name])
             if norm_found_version > norm_version:
+                updatelist.append(name)
                 if opt['gui']:
                     liststore.append([name,found[name]])
                 else:
                     print '%-20s %s' % (name,found[name])
-        
 
+        opt['pkgs'] = updatelist
+        getDeps(None,None)
+        
 #Auxiliar function for searching functions
 def search(regex):
 
