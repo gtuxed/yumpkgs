@@ -136,16 +136,16 @@ def depsToFile():
     global pkgsloc,PKGLIST,liststore,col,col2,treeview
     order = 1
 
-    if opt['gui']:
+    if opt['gui'] and not opt['update']:
         treeview.show()
-        col.set_title('Location')
-        col2.set_title('Install order')
+        col.set_title('LOCATION')
+        col2.set_title('INSTALL ORDER')
 
     PKGLIST = open(PKGLIST_PATH,'w')    
     pkgsloc.reverse()
     for loc in pkgsloc:
 	PKGLIST.write(opt['baseurl'] + '/' + loc + '\n')
-        if opt['gui']: 
+        if opt['gui'] and not opt['update']: 
             liststore.append([loc,order])
             order += 1
     PKGLIST.close()
@@ -177,17 +177,17 @@ def down(url,location):
 def getDeps(widget,event):
 
     #Variables
-    global entry,cur,pkgsloc,nodes,liststore
+    global entry,cur,pkgsloc,nodes,liststore,opt
 
     #If in GUI mode
-    if opt['gui']: 
-        if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
+    if opt['gui'] and not opt['update']: 
+        if event != None and event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
             return(0)
         liststore.clear()
         nodes = {}
         pkgsloc = []
         text = entry.get_text()
-        if(text != ''): 
+        if text != '': 
             opt['pkgs'] = text.split(',')
         else:
             return(0)
@@ -197,7 +197,7 @@ def getDeps(widget,event):
             nodes[pkg] = 1
         else:
             continue
-        print '\n> ' + pkg + '\n'
+        if not opt['quiet']: print '\n> ' + pkg + '\n'
         cur.execute('select location_href from packages where packages.name = "' + pkg + '"')
         pkgloc = cur.fetchone()[0]
         pkgsloc.append(pkgloc)
@@ -211,18 +211,22 @@ def toVersion(string):
     return version
 
 #What is necessary to update the system
-def update():
+def update(widget,event):
 
-    global col,col2,treeview,liststore
+    global col,col2,treeview,liststore,opt
     updatelist = []
+    rpm = None
 
-    rpm = os.popen("./rpm -qa")
-    if opt['gui']: 
+    if opt['gui']:
+        opt['update'] = 1
+        if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
+            return(0)
         treeview.show()
-        col.set_title('Package name')
-        col2.set_title('Version')
+        col.set_title('NAME')
+        col2.set_title('NEW VERSION')
         liststore.clear()
-    else:
+    rpm = os.popen("./rpm -qa")
+    if not opt['gui']:
         print '%-20s %s\n' % ('NAME','NEW VERSION')
     for line in rpm.readlines():
         tmp = line.rstrip('\n')
@@ -239,9 +243,8 @@ def update():
                     liststore.append([name,found[name]])
                 else:
                     print '%-20s %s' % (name,found[name])
-
-        opt['pkgs'] = updatelist
-        getDeps(None,None)
+    opt['pkgs'] = updatelist
+    getDeps(None,None)
         
 #Auxiliar function for searching functions
 def search(regex):
@@ -266,11 +269,11 @@ def searchPkgs(widget,event):
 
     #If in GUI mode
     if opt['gui']: 
-        treeview.show()
-        col.set_title('Package name')
-        col2.set_title('Version')
         if event.type == gtk.gdk.KEY_PRESS and event.keyval != gtk.keysyms.Return:
             return(0)
+        treeview.show()
+        col.set_title('PACKAGE NAME')
+        col2.set_title('VERSION')
         liststore.clear()
         regex = entry.get_text()
     else:
@@ -289,7 +292,7 @@ def searchPkgs(widget,event):
 def initGUI():
 
     #Varisbles
-    global builder,window,treeview,liststore,entry,btOk,col,col2
+    global builder,window,treeview,liststore,entry,btOk,btUp,btFind,col,col2
 
     #Retrieve objects
     builder = gtk.Builder()
@@ -299,13 +302,16 @@ def initGUI():
     entry = builder.get_object("entry1")
     btOk = builder.get_object("button1")
     btFind = builder.get_object("button2")
+    btUp = builder.get_object("button3")
 
     #Connect events
     window.connect("destroy",gtk.main_quit)
     btOk.connect("button-press-event",getDeps)
-    btFind.connect("button-press-event",searchPkgs)
     btOk.connect("key-press-event",getDeps)
+    btFind.connect("button-press-event",searchPkgs)
     btFind.connect("key-press-event",searchPkgs)
+    btUp.connect("button-press-event",update)
+    btUp.connect("key-press-event",update)
 
     #Create the treeview
     liststore = gtk.ListStore(str,str)
@@ -431,7 +437,7 @@ if not opt['justdown']:
         if opt['search']:
             searchPkgs(None,None)
         elif opt['update']:
-            update()
+            update(None,None)
         else:
             getDeps(None,None)                
     con.close()
