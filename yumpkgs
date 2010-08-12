@@ -29,14 +29,15 @@ opt = {'arch' : 'i386',
        'baseurl' : '', 
        'down' : 0,
        'downdir' : '',
-       'install' : 0,
        'gui' : 0, 
+       'install' : 0,
        'justdown' : 0, 
        'metadata' : '',
        'pkgs' : [], 
        'quiet' : 0,
        'rel' : '13',
        'search' : '',
+       'update': 0
        }
 
 #GUI
@@ -203,7 +204,42 @@ def getDeps(widget,event):
         walkTree(pkg)
     depsToFile()
     
+def toVersion(string):
+    version = ''
+    for num in string.split('.'):
+        version += "%02d" % int(num)
+    return version
 
+#What is necessary to update the system
+def update():
+
+    global col,col2,treeview,liststore
+
+    rpm = os.popen("./rpm -qa")
+    if opt['gui']: 
+        treeview.show()
+        col.set_title('Package name')
+        col2.set_title('Version')
+        liststore.clear()
+    else:
+        print '%-20s %s\n' % ('NAME','NEW VERSION')
+    for line in rpm.readlines():
+        tmp = line.rstrip('\n')
+        matched = re.search("([^-]+)-([0-9.]+)",tmp)
+        name = matched.group(1)
+        version = matched.group(2)
+        norm_version = toVersion(version)
+        found = search('^' + name + '$')
+        for name in found.keys():
+            norm_found_version = toVersion(found[name])
+            if norm_found_version > norm_version:
+                if opt['gui']:
+                    liststore.append([name,found[name]])
+                else:
+                    print '%-20s %s' % (name,found[name])
+        
+
+#Auxiliar function for searching functions
 def search(regex):
 
     #Variables
@@ -233,6 +269,8 @@ def searchPkgs(widget,event):
             return(0)
         liststore.clear()
         regex = entry.get_text()
+    else:
+        regex = opt['search']
 
     pkgs = search(regex)
     if not opt['gui']: 
@@ -285,7 +323,7 @@ def initGUI():
 #START
 
 #Handle the command line arguments
-opts, args = getopt.getopt(sys.argv[1:],'hb:dD:gijm:p:qs:x:')   
+opts, args = getopt.getopt(sys.argv[1:],'hb:dD:gijm:p:qs:ux:')   
 for o, val in opts:
     if o == '-h':
         helpmsg()
@@ -309,6 +347,8 @@ for o, val in opts:
         opt['quiet'] = 1
     elif o == '-s': 
         opt['search'] = val
+    elif o == '-u': 
+        opt['update'] = 1
     elif o == '-x': 
         opt['downdir'] = val
     else:
@@ -325,7 +365,7 @@ if opt['install']:
     sys.exit()
 
 #Checking if package names was supplied
-if not opt['pkgs'] and not opt['search'] and not opt['gui']:
+if not opt['pkgs'] and not opt['search'] and not opt['gui'] and not opt['update']:
     print 'Please specify at least one package name.'
     print 'Ex.: ' + PROG_NAME + ' -p glibc'
     sys.exit(1)
@@ -386,6 +426,8 @@ if not opt['justdown']:
     else:
         if opt['search']:
             searchPkgs(None,None)
+        elif opt['update']:
+            update()
         else:
-            getDeps(None,None)
+            getDeps(None,None)                
     con.close()
